@@ -1,0 +1,9 @@
+
+m = vec2mat((1:1:100),10,10);
+
+for i=1:size(m,1)
+    for j=1:size(m,2)
+        k = k + 1;
+        disp(num2str([i]))
+    end
+end
