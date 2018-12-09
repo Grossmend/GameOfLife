@@ -1,43 +1,45 @@
 
-function game_of_life
+function game_of_life(mat, number_generation, is_visual)
 
-clear
-close all
-clc
+% основная функция программы
 
-% размер решетки
-xCount = 100;
-yCount = 100;
+if is_visual
+    visual(mat);
+    pause(5)
+else
+    warning('визуализация не отображена!')
+end
 
-% инициализируем клетки
-mat = zeros(xCount, yCount);
-% cells = vec2mat((1:1:100), 10, 10);
-% генерируем случайные точки
-idx = randsample(numel(mat), numel(mat)/10);
-mat(idx) = 1;
-showCells(mat);
-
-% Rules
-for i=1:1000
-    % следующее поколение
-    cellsNew = findNeighbor(mat);
-    % обновление
-    mat = cellsNew;
+% основной цикл программы
+for i=1:number_generation
+    
+    % получаем следующее поколение
+    mat = getNewMat(mat);
+    
     % визуализация
-    showCells(mat);
+    if is_visual
+        visual(mat);
+    end
+    
 end
 
 end
 
 
-function matNew = findNeighbor(m)
+function countMat = calcNeighbor(m)
 
-% обновление границ
+% функция подсчета кол-ва соседей. Каждая клетка матрицы countMat размером m x m
+% отображет сумму соседей
 
-% инициализируем новую вселенную с бесконечными полями
+% инициализируем новую матрицу с "бесконечными полями"
 matInf = zeros(size(m)+2);
 
-% добавляем вокруг начальной матрицы еще один слой клеток
+% инициализируем матрицу счета соседей
+countMat = zeros(size(m,1), size(m,2));
+
+% "замыкаем" границы
+
+% добавляем вокруг исходной матрицы еще один слой клеток (для замыкания)
 matInf(2:end-1, 2:end-1) = m;
 % добавляем низ матрицы наверх нового слоя
 matInf(1, 2:end-1) = m(end, :);
@@ -48,7 +50,7 @@ matInf(2:end-1, 1) = m(:, end);
 % добавляем левую сторону матрицы вправо нового слоя 
 matInf(2:end-1, end) = m(:, 1);
 
-% обновление углов
+% "замыкаем" углы
 
 % добавляем нижний правый угол в верхний левый нового слоя
 matInf(1, 1) = m(end, end);
@@ -59,45 +61,64 @@ matInf(end, 1) = m(1, end);
 % добавляем верхний левый угол в правый нижний нового слоя
 matInf(end, end) = m(1, 1);
 
-[nelx, nely] = size(m);
+[xsize, ysize] = size(m);
 
+% получаем матрицу сумм каждой клетки
+for y = 2:ysize+1
+    for x = 2:xsize+1
+        % считаем сумму соседей каждой клетки (узкое место программы)
+        countMat(x-1, y-1) = sum(sum(matInf(x-1:x+1, y-1:y+1))) - m(x-1, y-1);
+    end
+end
+
+end
+
+function matNew = getNewMat(m)
+
+% функция формирует новую матрицу. По правилам игры
+
+[xsize, ysize] = size(m);
+
+% инициализируем новую матрицу
 matNew = zeros(size(m));
 
-% цикл по каждой клетке на поле
-% idx = 0;
+% получаем матрицу кол-ва соседей каждой клетки
+countMat = calcNeighbor(m);
 
-for yInf = 2:nely+1
-    for xInf = 2:nelx+1
+idx = 0;
+
+% цикл по каждой клетке на поле
+for yInf = 2:ysize+1
+    for xInf = 2:xsize+1
         
-        % idx = idx + 1;
-        idx = sub2ind([nelx,nely], xInf-1, yInf-1);
+        idx = idx + 1;
+
+        % получаем сумму клетки
+        count = countMat(idx);
         
-        % disp(num2str([idx, idx2]))
+        % ----- проходим по правилам (можно добавлять/изменять свои) -----
         
-        % считаем сумму соседей каждой клетки (узкое место программы)
-        count = sum(sum(matInf(xInf-1:xInf+1, yInf-1:yInf+1))) - m(idx);
+         % правило 1: Если клетка мертва и у нее 3 соседей, то в ней зарождается жизнь
+        if (m(idx) == 0) && (count == 3)
+            matNew(idx) = 1;
+        end       
         
-        % Правило 1: Если клетка жива и у нее соседей меньше двух, то она умирает от
+         % правило 2: Если клетка жива и у нее 2 или 3 соседа, то она
+        % остается жить
+        if (m(idx) == 1) && ((count == 2) || (count == 3))
+            matNew(idx) = 1;
+        end       
+        
+        % правило 3: Если клетка жива и у нее соседей меньше двух, то она умирает от
         % одиночества
         if (m(idx) == 1) && (count < 2)
             matNew(idx) = 0;
         end
-        
-        % Правило 2: Если клетка жива и у нее 2 или 3 соседа, то она
-        % остается жить
-        if (m(idx) == 1) && ((count == 2) || (count == 3))
-            matNew(idx) = 1;
-        end
-        
-        % Правило 3: Если клетка жива и у нее больше 3 соседей, то она
+
+        % правило 4: Если клетка жива и у нее больше 3 соседей, то она
         % умирает от перенаселенности
         if (m(idx) == 1) && (count > 3)
             matNew(idx) = 0;
-        end
-        
-        % Правило 4: Если клетка мертва и у нее 3 соседей, то в ней зарождается жизнь
-        if (m(idx) == 0) && (count == 3)
-            matNew(idx) = 1;
         end
         
     end
@@ -105,15 +126,19 @@ end
 
 end
 
-function showCells(cells)
+function visual(mat)
 
 % визуализация
-imagesc(cells); caxis([0 1]);
-colormap(flipud(gray));
-axis off;
+
+spy(mat, 'b', 8)
+% disp(num2str([size(mat,1), size(mat, 2)]))
+% axis off;
 axis equal;
+% задаем оси
+xlim([0 size(mat,1)])
+ylim([0 size(mat,2)])
+title('Game of life')
+
 drawnow
 
 end
-
-
